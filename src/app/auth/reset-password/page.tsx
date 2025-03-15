@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
@@ -25,7 +25,7 @@ const ResetPasswordSchema = Yup.object().shape({
     .oneOf([Yup.ref('password')], 'Passwords must match'),
 });
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -44,15 +44,13 @@ export default function ResetPasswordPage() {
   // Validate token
   if (!token) {
     return (
-      <AuthLayout>
-        <div className="text-center">
-          <h1 className="auth-title">Invalid Link</h1>
-          <p className="auth-subtitle">The password reset link is invalid or has expired.</p>
-          <Link href="/auth/forgot-password">
-            <Button className="mt-6">Request New Link</Button>
-          </Link>
-        </div>
-      </AuthLayout>
+      <div className="text-center">
+        <h1 className="auth-title">Invalid Link</h1>
+        <p className="auth-subtitle">The password reset link is invalid or has expired.</p>
+        <Link href="/auth/forgot-password">
+          <Button className="mt-6">Request New Link</Button>
+        </Link>
+      </div>
     );
   }
 
@@ -90,7 +88,7 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <AuthLayout>
+    <>
       <h1 className="auth-title">Reset Password</h1>
       <p className="auth-subtitle">Enter your new password below.</p>
       
@@ -140,6 +138,20 @@ export default function ResetPasswordPage() {
         message={modalProps.message}
         type={modalProps.type}
       />
+    </>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <AuthLayout>
+      <Suspense fallback={
+        <div className="flex justify-center items-center h-full">
+          <p>Loading reset password page...</p>
+        </div>
+      }>
+        <ResetPasswordContent />
+      </Suspense>
     </AuthLayout>
   );
 } 

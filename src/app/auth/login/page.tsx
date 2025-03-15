@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { useDispatch } from 'react-redux';
@@ -41,7 +41,7 @@ declare global {
   }
 }
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const dispatch = useDispatch();
   const { data: session, status } = useSession();
@@ -352,5 +352,19 @@ export default function LoginPage() {
         type={modalProps.type}
       />
     </AuthLayout>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <AuthLayout>
+        <div className="flex justify-center items-center h-full">
+          <p>Loading...</p>
+        </div>
+      </AuthLayout>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 } 

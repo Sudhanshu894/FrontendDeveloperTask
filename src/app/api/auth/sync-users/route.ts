@@ -12,9 +12,9 @@ interface User {
   otp?: string;
 }
 
-// Extend the global object to include our users
-declare global {
-  var users: User[];
+// Ensure TypeScript knows users is initialized
+if (typeof global.users === 'undefined') {
+  global.users = [];
 }
 
 // Initialize global users if not already initialized

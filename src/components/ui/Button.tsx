@@ -3,7 +3,7 @@
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'social';
+  variant?: 'primary' | 'social' | 'outline';
   isLoading?: boolean;
   icon?: React.ReactNode;
 }
@@ -16,9 +16,13 @@ const Button: React.FC<ButtonProps> = ({
   className = '',
   ...props
 }) => {
-  const baseClasses = variant === 'primary' 
-    ? 'primary-button' 
-    : 'social-button';
+  let baseClasses = 'primary-button';
+  
+  if (variant === 'social') {
+    baseClasses = 'social-button';
+  } else if (variant === 'outline') {
+    baseClasses = 'outline-button';
+  }
 
   return (
     <button
