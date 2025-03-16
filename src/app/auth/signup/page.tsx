@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
 import Link from 'next/link';
@@ -10,10 +10,14 @@ import * as Yup from 'yup';
 import AuthLayout from '@/components/auth/AuthLayout';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
-import GoogleSignIn from '@/components/auth/GoogleSignIn';
-import MicrosoftSignIn from '@/components/auth/MicrosoftSignIn';
-import { loginStart, loginSuccess, loginFailure } from '@/redux/slices/userSlice';
-import env from '@/config/env.config';
+import AuthFormDivider from '@/components/auth/AuthFormDivider';
+import SocialSignInButtons from '@/components/auth/SocialSignInButtons';
+import LoadingFallback from '@/components/ui/LoadingFallback';
+import useAuthForm from '@/hooks/useAuthForm';
+import usePasswordVisibility from '@/hooks/usePasswordVisibility';
+import useFormValidation from '@/hooks/useFormValidation';
+import useUserSync from '@/hooks/useUserSync';
+import { loginSuccess } from '@/redux/slices/userSlice';
 
 // Validation schema
 const SignupSchema = Yup.object().shape({
@@ -38,87 +42,51 @@ const SignupSchema = Yup.object().shape({
     .oneOf([true], 'You must accept the terms and conditions'),
 });
 
-export default function SignupPage() {
+function SignupContent() {
   const router = useRouter();
   const dispatch = useDispatch();
-  const [showModal, setShowModal] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [modalProps, setModalProps] = useState<{
-    title: string;
-    message: string;
-    type: 'success' | 'error' | 'warning' | 'info';
-  }>({
-    title: '',
-    message: '',
-    type: 'success',
+  
+  // Use custom hooks
+  const { 
+    showModal, 
+    setShowModal, 
+    isSubmitting, 
+    modalProps, 
+    setModalProps,
+    handleOAuthError,
+    showErrorModal,
+    showSuccessModal,
+    showInfoModal,
+    startSubmitting,
+    stopSubmitting
+  } = useAuthForm();
+  
+  const { showPassword, togglePasswordVisibility } = usePasswordVisibility();
+  const { showPassword: showConfirmPassword, togglePasswordVisibility: toggleConfirmPasswordVisibility } = usePasswordVisibility();
+  
+  const { addUser } = useUserSync();
+  
+  const { 
+    formValues, 
+    errors, 
+    handleChange, 
+    validateForm 
+  } = useFormValidation({
+    initialValues: {
+      fullName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      termsAccepted: false
+    },
+    validationSchema: SignupSchema
   });
-
-  // Form state
-  const [formValues, setFormValues] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    termsAccepted: false
-  });
-
-  // Errors state
-  const [errors, setErrors] = useState<{
-    fullName?: string;
-    email?: string;
-    password?: string;
-    confirmPassword?: string;
-    termsAccepted?: string;
-  }>({});
-
-  // Handle input changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormValues({
-      ...formValues,
-      [name]: type === 'checkbox' ? checked : value
-    });
-  };
-
-  // Toggle password visibility
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
-  // Toggle confirm password visibility
-  const toggleConfirmPasswordVisibility = () => {
-    setShowConfirmPassword(!showConfirmPassword);
-  };
-
-  // Validate form
-  const validateForm = async () => {
-    try {
-      await SignupSchema.validate(formValues, { abortEarly: false });
-      setErrors({});
-      return true;
-    } catch (err) {
-      if (err instanceof Yup.ValidationError) {
-        const validationErrors: Record<string, string> = {};
-        err.inner.forEach((error) => {
-          if (error.path) {
-            validationErrors[error.path] = error.message;
-          }
-        });
-        setErrors(validationErrors);
-      }
-      return false;
-    }
-  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    startSubmitting();
     
     try {
-      dispatch(loginStart());
-      
       // Validate form
       const isValid = await validateForm();
       
@@ -126,61 +94,31 @@ export default function SignupPage() {
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Save user data to localStorage for demo purposes
-        // In a real app, this would be a server API call
-        const users = JSON.parse(localStorage.getItem('users') || '[]');
-        
-        // Check if user already exists
-        const userExists = users.some((user: any) => user.email === formValues.email);
-        
-        if (userExists) {
-          dispatch(loginFailure('User already exists'));
-          setModalProps({
-            title: 'User Already Exists',
-            message: 'An account with this email already exists. Please sign in instead.',
-            type: 'info',
-          });
-          setShowModal(true);
-          setIsSubmitting(false);
-          return;
-        }
-        
         // Generate random 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         
         // Add new user with OTP
-        users.push({
+        const result = await addUser({
           fullName: formValues.fullName,
           email: formValues.email,
-          password: formValues.password, // In a real app, this would be hashed
-          createdAt: new Date().toISOString(),
+          password: formValues.password,
           verified: false,
-          otp: otp
+          otp
         });
         
-        // Save updated users array
-        localStorage.setItem('users', JSON.stringify(users));
-        console.log("[Signup] User created successfully with OTP:", otp);
-        
-        // Sync users with server
-        try {
-          const response = await fetch('/api/auth/sync-users', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ users }),
-          });
-          
-          if (!response.ok) {
-            console.error('Failed to sync users with server');
+        if (!result.success) {
+          if (result.error === 'User already exists') {
+            showInfoModal(
+              'User Already Exists',
+              'An account with this email already exists. Please sign in instead.'
+            );
+            return;
           } else {
-            const data = await response.json();
-            console.log("Users synced with server after signup:", data);
+            throw new Error(result.error || 'Failed to create user');
           }
-        } catch (error) {
-          console.error("Error syncing users after signup:", error);
         }
+        
+        console.log("[Signup] User created successfully with OTP:", otp);
         
         // Store email in session for OTP verification
         sessionStorage.setItem('pendingVerification', formValues.email);
@@ -192,25 +130,13 @@ export default function SignupPage() {
       }
     } catch (error) {
       console.error('Signup failed:', error);
-      dispatch(loginFailure('An error occurred during signup'));
-      setModalProps({
-        title: 'Signup Error',
-        message: 'An error occurred during signup. Please try again.',
-        type: 'error',
-      });
-      setShowModal(true);
+      showErrorModal(
+        'Signup Error',
+        'An error occurred during signup. Please try again.'
+      );
     } finally {
-      setIsSubmitting(false);
+      stopSubmitting();
     }
-  };
-
-  const handleOAuthSignInError = (errorMessage: string) => {
-    setModalProps({
-      title: 'Signup Error',
-      message: errorMessage,
-      type: 'error',
-    });
-    setShowModal(true);
   };
 
   return (
@@ -362,29 +288,13 @@ export default function SignupPage() {
           </Button>
         </form>
         
-        <div className="divider w-full">
-          <div className="divider-line"></div>
-          <span className="divider-text">or</span>
-          <div className="divider-line"></div>
-        </div>
+        <AuthFormDivider />
         
-        <div className="space-y-3 w-full">
-          {env.ENABLE_GOOGLE_AUTH && (
-            <GoogleSignIn 
-              buttonText="Sign up with Google"
-              callbackUrl="/dashboard"
-              onError={handleOAuthSignInError}
-            />
-          )}
-          
-          {env.ENABLE_MICROSOFT_AUTH && (
-            <MicrosoftSignIn 
-              buttonText="Sign up with Microsoft"
-              callbackUrl="/dashboard"
-              onError={handleOAuthSignInError}
-            />
-          )}
-        </div>
+        <SocialSignInButtons 
+          buttonTextPrefix="Sign up"
+          callbackUrl="/dashboard"
+          onError={handleOAuthError}
+        />
         
         <p className="text-center mt-4 mb-4" style={{ color: 'var(--paragraph)', fontSize: '0.875rem' }}>
           Already have an account?{' '}
@@ -402,5 +312,13 @@ export default function SignupPage() {
         type={modalProps.type}
       />
     </AuthLayout>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<LoadingFallback message="Loading signup page..." />}>
+      <SignupContent />
+    </Suspense>
   );
 }

@@ -7,7 +7,7 @@ interface OtpInputProps {
   onChange: (otp: string) => void;
   numInputs: number;
   inputType?: string;
-  renderInput: (props: React.InputHTMLAttributes<HTMLInputElement> & {
+  renderInput: (props: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'ref'> & {
     ref: React.RefCallback<HTMLInputElement>;
   }) => React.ReactNode;
 }
@@ -97,22 +97,28 @@ const OtpInput: React.FC<OtpInputProps> = ({
 
   return (
     <div className="otp-container">
-      {Array.from({ length: numInputs }, (_, index) => (
-        <React.Fragment key={index}>
-          {renderInput({
-            type: inputType,
-            maxLength: 1,
-            ref: (ref: HTMLInputElement | null) => (inputRefs.current[index] = ref),
-            value: otp[index] || '',
-            onChange: (e) => handleChange(e as React.ChangeEvent<HTMLInputElement>, index),
-            onKeyDown: (e) => handleKeyDown(e as React.KeyboardEvent<HTMLInputElement>, index),
-            onPaste: handlePaste,
-            className: "otp-input",
-            'aria-label': `Digit ${index + 1}`,
-            autoComplete: "one-time-code"
-          })}
-        </React.Fragment>
-      ))}
+      {Array.from({ length: numInputs }, (_, index) => {
+        const inputProps = {
+          type: inputType,
+          maxLength: 1,
+          value: otp[index] || '',
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => handleChange(e, index),
+          onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => handleKeyDown(e, index),
+          onPaste: handlePaste,
+          className: "otp-input",
+          'aria-label': `Digit ${index + 1}`,
+          autoComplete: "one-time-code"
+        };
+        
+        return (
+          <React.Fragment key={index}>
+            {renderInput({
+              ...inputProps,
+              ref: (ref: HTMLInputElement | null) => (inputRefs.current[index] = ref)
+            })}
+          </React.Fragment>
+        );
+      })}
     </div>
   );
 };

@@ -1,13 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 import { MdError } from 'react-icons/md';
+import usePasswordVisibility from '@/hooks/usePasswordVisibility';
 
 interface InputFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   error?: string;
   touched?: boolean;
+  togglePassword?: () => void; // Allow parent to control password visibility
+  showPassword?: boolean; // Allow parent to control password visibility state
 }
 
 const InputField: React.FC<InputFieldProps> = ({
@@ -15,9 +18,16 @@ const InputField: React.FC<InputFieldProps> = ({
   error,
   touched,
   type = 'text',
+  togglePassword,
+  showPassword: externalShowPassword,
   ...props
 }) => {
-  const [showPassword, setShowPassword] = useState(false);
+  // Use the hook only if togglePassword is not provided
+  const { showPassword: internalShowPassword, togglePasswordVisibility } = 
+    usePasswordVisibility(false);
+  
+  // Use either external or internal state
+  const showPassword = togglePassword !== undefined ? externalShowPassword : internalShowPassword;
   const isPasswordType = type === 'password';
   const hasError = touched && error;
 
@@ -35,7 +45,7 @@ const InputField: React.FC<InputFieldProps> = ({
             type="button"
             className="absolute right-3 top-[40%] transform translate-y-[-50%] flex items-center justify-center"
             style={{ color: 'var(--paragraph)' }}
-            onClick={() => setShowPassword(!showPassword)}
+            onClick={togglePassword || togglePasswordVisibility}
           >
             {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
           </button>
