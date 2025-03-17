@@ -102,7 +102,8 @@ function SignupContent() {
           fullName: formValues.fullName,
           email: formValues.email,
           password: formValues.password,
-          verified: false,
+          // Mark user as verified directly instead of requiring OTP verification
+          verified: true,
           otp
         });
         
@@ -118,15 +119,25 @@ function SignupContent() {
           }
         }
         
-        console.log("[Signup] User created successfully with OTP:", otp);
+        console.log("[Signup] User created successfully:", formValues.email);
         
-        // Store email in session for OTP verification
-        sessionStorage.setItem('pendingVerification', formValues.email);
+        // Update Redux state with verified user
+        dispatch(loginSuccess({ 
+          email: formValues.email, 
+          name: formValues.fullName, 
+          verified: true 
+        }));
         
-        dispatch(loginSuccess({ email: formValues.email, name: formValues.fullName, verified: false }));
+        // Show success message
+        showSuccessModal(
+          'Account Created',
+          'Your account has been created successfully. Redirecting to dashboard...'
+        );
         
-        // Redirect to OTP verification page
-        router.push('/auth/verify-otp');
+        // Redirect directly to dashboard
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 1500);
       }
     } catch (error) {
       console.error('Signup failed:', error);

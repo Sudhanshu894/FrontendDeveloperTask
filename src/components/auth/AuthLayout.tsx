@@ -26,15 +26,15 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
               <h1 className="auth-image-title text-white text-3xl font-bold mb-4">Welcome to WORKHIVE!</h1>
               <ul className="auth-image-list space-y-3">
                 <li className="auth-image-list-item text-white/90 flex">
-                  <span className="auth-image-list-item-bullet mr-2">•</span>
+                  <span className="auth-image-list-item-bullet">•</span>
                   <span className="text-lg font-medium">Employee Management: View detailed profiles, track performance, and manage attendance.</span>
                 </li>
                 <li className="auth-image-list-item text-white/90 flex">
-                  <span className="auth-image-list-item-bullet mr-2">•</span>
+                  <span className="auth-image-list-item-bullet">•</span>
                   <span className="text-lg font-medium">Performance Insights: Analyze team goals, progress, and achievements.</span>
                 </li>
                 <li className="auth-image-list-item text-white/90 flex">
-                  <span className="auth-image-list-item-bullet mr-2">•</span>
+                  <span className="auth-image-list-item-bullet">•</span>
                   <span className="text-lg font-medium">Attendance & Leaves: Track attendance patterns and manage leave requests effortlessly.</span>
                 </li>
               </ul>
